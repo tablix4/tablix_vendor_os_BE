@@ -1,0 +1,180 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  BLOCKED
+}
+
+enum OtpPurpose {
+  LOGIN
+}
+
+enum OrderStatus {
+  PENDING
+  ACCEPTED
+  PREPARING
+  READY
+  COMPLETED
+  CANCELLED
+}
+
+model User {
+  id String @id @default(cuid())
+
+  email String  @unique
+  name  String?
+
+  status UserStatus @default(PENDING)
+
+  refreshTokenHash String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  shop Shop?
+
+  otps Otp[]
+
+  @@map("users")
+}
+
+model Shop {
+  id String @id @default(cuid())
+
+  ownerId String @unique
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  name String
+  logo String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  categories MenuCategory[]
+  menuItems  MenuItem[]
+  orders     Order[]
+
+  @@map("shops")
+}
+
+model MenuCategory {
+  id String @id @default(cuid())
+
+  shopId String
+  shop   Shop   @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  name String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  menuItems MenuItem[]
+
+  @@unique([shopId, name])
+  @@index([shopId])
+  @@map("menu_categories")
+}
+
+model MenuItem {
+  id String @id @default(cuid())
+
+  shopId     String
+  categoryId String
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  category MenuCategory @relation(fields: [categoryId], references: [id])
+
+  name String
+
+  description String?
+
+  price Decimal @db.Decimal(10, 2)
+
+  image String?
+
+  isAvailable Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orderItems OrderItem[]
+
+  @@index([shopId])
+  @@index([categoryId])
+  @@map("menu_items")
+}
+
+model Order {
+  id String @id @default(cuid())
+
+  shopId String
+
+  shop Shop @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  customerName String?
+
+  customerPhone String?
+
+  total Decimal @db.Decimal(10, 2)
+
+  status OrderStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  items OrderItem[]
+
+  @@index([shopId])
+  @@index([status])
+  @@map("orders")
+}
+
+model OrderItem {
+  id String @id @default(cuid())
+
+  orderId String
+
+  menuItemId String
+
+  quantity Int
+
+  price Decimal @db.Decimal(10, 2)
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  menuItem MenuItem @relation(fields: [menuItemId], references: [id])
+
+  @@index([orderId])
+  @@index([menuItemId])
+  @@map("order_items")
+}
+
+model Otp {
+  id String @id @default(cuid())
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  email String
+  otp   String
+
+  purpose OtpPurpose
+
+  expiresAt DateTime
+  isUsed    Boolean  @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([email])
+  @@index([userId])
+  @@map("otps")
+}
