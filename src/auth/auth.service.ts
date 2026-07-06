@@ -5,7 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { OtpPurpose } from '@prisma/client';
-import { JwtPayload } from './interfaces/jwt-payload.interface';
+
 import {
   CompleteProfileDto,
   RefreshTokenDto,
@@ -13,13 +13,20 @@ import {
   VerifyOtpDto,
 } from './dto';
 
+import { JwtPayload } from './interfaces/jwt-payload.interface';
+
 import { UserRepository } from './repositories/user.repository';
 import { OtpRepository } from './repositories/otp.repository';
 
 import { JwtTokenService } from './services/jwt-token.service';
 import { OtpService } from './services/otp.service';
-import { TokenUtil } from './utils/token.util';
+
 import { MailService } from './mail/mail.service';
+
+import { TokenUtil } from './utils/token.util';
+
+import { ApiResponse } from '../common/utils/api-response';
+import { Messages } from 'src/common/constants/messages';
 
 @Injectable()
 export class AuthService {
@@ -32,11 +39,15 @@ export class AuthService {
   ) {}
 
   async sendOtp(dto: SendOtpDto) {
+    console.log('???????????????', dto.email);
     await this.otpRepository.deletePrevious(dto.email, OtpPurpose.LOGIN);
+    console.log('deletePrevious');
 
     const otp = this.otpService.generateOtp();
+    console.log('otp', otp);
 
     const expiresAt = this.otpService.getExpiryTime();
+    console.log('expiresAt', expiresAt);
 
     await this.otpRepository.create({
       email: dto.email,
@@ -44,13 +55,10 @@ export class AuthService {
       purpose: OtpPurpose.LOGIN,
       expiresAt,
     });
-
+    console.log('create');
     await this.mailService.sendOtp(dto.email, otp);
-
-    return {
-      success: true,
-      message: 'OTP sent successfully',
-    };
+    console.log('sendOtp');
+    return ApiResponse.success(Messages.OTP_SENT);
   }
 
   async verifyOtp(dto: VerifyOtpDto) {
@@ -61,11 +69,11 @@ export class AuthService {
     );
 
     if (!otpRecord) {
-      throw new NotFoundException('Invalid OTP');
+      throw new NotFoundException(Messages.INVALID_OTP);
     }
 
     if (this.otpService.isExpired(otpRecord.expiresAt)) {
-      throw new BadRequestException('OTP has expired');
+      throw new BadRequestException(Messages.OTP_EXPIRED);
     }
 
     await this.otpRepository.markAsUsed(otpRecord.id);
@@ -75,11 +83,10 @@ export class AuthService {
     if (!user) {
       const tempToken = this.jwtTokenService.generateTempToken(dto.email);
 
-      return {
-        success: true,
+      return ApiResponse.success(Messages.OTP_VERIFIED, {
         isNewUser: true,
         tempToken,
-      };
+      });
     }
 
     const tokens = this.jwtTokenService.generateTokens(user.id, user.email);
@@ -88,13 +95,12 @@ export class AuthService {
 
     await this.userRepository.saveRefreshTokenHash(user.id, refreshTokenHash);
 
-    return {
-      success: true,
+    return ApiResponse.success(Messages.LOGIN_SUCCESS, {
       isNewUser: false,
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
       user,
-    };
+    });
   }
 
   async completeProfile(tempToken: string, dto: CompleteProfileDto) {
@@ -112,12 +118,11 @@ export class AuthService {
 
     await this.userRepository.saveRefreshTokenHash(user.id, refreshTokenHash);
 
-    return {
-      success: true,
+    return ApiResponse.success(Messages.PROFILE_COMPLETED, {
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
       user,
-    };
+    });
   }
 
   async refreshToken(dto: RefreshTokenDto) {
@@ -126,17 +131,17 @@ export class AuthService {
     try {
       payload = this.jwtTokenService.verifyRefreshToken(dto.refreshToken);
     } catch {
-      throw new UnauthorizedException('Invalid or expired refresh token');
+      throw new UnauthorizedException(Messages.INVALID_EXPIRE_REFRESH_TOKEN);
     }
 
     const user = await this.userRepository.findById(payload.sub);
 
     if (!user) {
-      throw new UnauthorizedException('Invalid refresh token');
+      throw new UnauthorizedException(Messages.INVALID_REFRESH_TOKEN);
     }
 
     if (!user.refreshTokenHash) {
-      throw new UnauthorizedException('Please login again');
+      throw new UnauthorizedException(Messages.LOGIN_AGAIN);
     }
 
     const isValid = await TokenUtil.compare(
@@ -145,7 +150,7 @@ export class AuthService {
     );
 
     if (!isValid) {
-      throw new UnauthorizedException('Invalid refresh token');
+      throw new UnauthorizedException(Messages.INVALID_REFRESH_TOKEN);
     }
 
     const tokens = this.jwtTokenService.generateTokens(user.id, user.email);
@@ -154,19 +159,15 @@ export class AuthService {
 
     await this.userRepository.saveRefreshTokenHash(user.id, refreshTokenHash);
 
-    return {
-      success: true,
+    return ApiResponse.success(Messages.TOKEN_REFRESH_SUCCESS, {
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,
-    };
+    });
   }
 
   async logout(userId: string) {
     await this.userRepository.clearRefreshToken(userId);
 
-    return {
-      success: true,
-      message: 'Logout successful',
-    };
+    return ApiResponse.success(Messages.LOGOUT_SUCCESS);
   }
 }

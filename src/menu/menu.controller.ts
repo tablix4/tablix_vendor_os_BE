@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Request,
   UseGuards,
 } from '@nestjs/common';
@@ -21,7 +22,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 import { MenuService } from './menu.service';
 
-import { CreateMenuItemDto, UpdateMenuItemDto } from './dto';
+import { CreateMenuItemDto, GetMenuItemsDto, UpdateMenuItemDto } from './dto';
 
 @ApiTags('Menu')
 @ApiBearerAuth()
@@ -53,8 +54,13 @@ export class MenuController {
     status: 200,
     description: 'Menu items fetched successfully',
   })
-  async findAll(@Request() req: { user: { id: string } }) {
-    return this.menuService.getMenuItems(req.user.id);
+  async findAll(
+    @Request() req: { user: { id: string } },
+    @Query() query: GetMenuItemsDto,
+  ) {
+    console.log('MENU CONTROLLER HIT');
+    console.log(req.user);
+    return this.menuService.getMenuItems(req.user.id, query);
   }
 
   @Get(':id')

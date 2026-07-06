@@ -80,4 +80,81 @@ export class MenuRepository {
       },
     });
   }
+
+  async findAllByShopWithPagination(
+    shopId: string,
+    query: {
+      skip: number;
+      take: number;
+      search?: string;
+      categoryId?: string;
+      isAvailable?: boolean;
+      sortBy: string;
+      sortOrder: 'asc' | 'desc';
+    },
+  ) {
+    const where: Prisma.MenuItemWhereInput = {
+      shopId,
+
+      ...(query.categoryId && {
+        categoryId: query.categoryId,
+      }),
+
+      ...(query.isAvailable !== undefined && {
+        isAvailable: query.isAvailable,
+      }),
+
+      ...(query.search && {
+        OR: [
+          {
+            name: {
+              contains: query.search,
+              mode: Prisma.QueryMode.insensitive,
+            },
+          },
+          {
+            description: {
+              contains: query.search,
+              mode: Prisma.QueryMode.insensitive,
+            },
+          },
+        ],
+      }),
+    };
+
+    const orderBy: Prisma.MenuItemOrderByWithRelationInput = {
+      [query.sortBy]: query.sortOrder,
+    };
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.menuItem.findMany({
+        where,
+        skip: query.skip,
+        take: query.take,
+        orderBy,
+        include: {
+          category: true,
+        },
+      }),
+
+      this.prisma.menuItem.count({
+        where,
+      }),
+    ]);
+
+    return {
+      items,
+      total,
+    };
+  }
+
+  async hasOrders(menuItemId: string): Promise<boolean> {
+    const count = await this.prisma.orderItem.count({
+      where: {
+        menuItemId,
+      },
+    });
+
+    return count > 0;
+  }
 }

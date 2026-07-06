@@ -4,24 +4,23 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 
-import { ShopRepository } from '../shop/repositories/shop.repository';
 import { CategoryRepository } from './repositories/category.repository';
 
 import { CreateCategoryDto, UpdateCategoryDto } from './dto';
 
+import { ShopHelperService } from '../common/services/shop-helper.service';
+import { ApiResponse } from '../common/utils/api-response';
+import { Messages } from '../common/constants/messages';
+
 @Injectable()
 export class CategoryService {
   constructor(
-    private readonly shopRepository: ShopRepository,
+    private readonly shopHelperService: ShopHelperService,
     private readonly categoryRepository: CategoryRepository,
   ) {}
 
   async createCategory(ownerId: string, dto: CreateCategoryDto) {
-    const shop = await this.shopRepository.findByOwnerId(ownerId);
-
-    if (!shop) {
-      throw new NotFoundException('Shop not found');
-    }
+    const shop = await this.shopHelperService.getCurrentShop(ownerId);
 
     const existingCategory = await this.categoryRepository.findByName(
       shop.id,
@@ -29,7 +28,7 @@ export class CategoryService {
     );
 
     if (existingCategory) {
-      throw new ConflictException('Category already exists');
+      throw new ConflictException(Messages.CATEGORY_ALREADY_EXISTS);
     }
 
     const category = await this.categoryRepository.create({
@@ -41,45 +40,27 @@ export class CategoryService {
       },
     });
 
-    return {
-      success: true,
-      message: 'Category created successfully',
-      data: category,
-    };
+    return ApiResponse.success(Messages.CATEGORY_CREATED, category);
   }
 
   async getCategories(ownerId: string) {
-    const shop = await this.shopRepository.findByOwnerId(ownerId);
-
-    if (!shop) {
-      throw new NotFoundException('Shop not found');
-    }
+    const shop = await this.shopHelperService.getCurrentShop(ownerId);
 
     const categories = await this.categoryRepository.findAllByShop(shop.id);
 
-    return {
-      success: true,
-      data: categories,
-    };
+    return ApiResponse.success(Messages.CATEGORY_FETCH_SUCCESS, categories);
   }
 
   async getCategoryById(ownerId: string, categoryId: string) {
-    const shop = await this.shopRepository.findByOwnerId(ownerId);
-
-    if (!shop) {
-      throw new NotFoundException('Shop not found');
-    }
+    const shop = await this.shopHelperService.getCurrentShop(ownerId);
 
     const category = await this.categoryRepository.findById(categoryId);
 
     if (!category || category.shopId !== shop.id) {
-      throw new NotFoundException('Category not found');
+      throw new NotFoundException(Messages.CATEGORY_NOT_FOUND);
     }
 
-    return {
-      success: true,
-      data: category,
-    };
+    return ApiResponse.success(Messages.CATEGORY_DETAILS, category);
   }
 
   async updateCategory(
@@ -87,47 +68,32 @@ export class CategoryService {
     categoryId: string,
     dto: UpdateCategoryDto,
   ) {
-    const shop = await this.shopRepository.findByOwnerId(ownerId);
-
-    if (!shop) {
-      throw new NotFoundException('Shop not found');
-    }
+    const shop = await this.shopHelperService.getCurrentShop(ownerId);
 
     const category = await this.categoryRepository.findById(categoryId);
 
     if (!category || category.shopId !== shop.id) {
-      throw new NotFoundException('Category not found');
+      throw new NotFoundException(Messages.CATEGORY_NOT_FOUND);
     }
 
     const updated = await this.categoryRepository.update(category.id, {
       name: dto.name,
     });
 
-    return {
-      success: true,
-      message: 'Category updated successfully',
-      data: updated,
-    };
+    return ApiResponse.success(Messages.CATEGORY_UPDATED, updated);
   }
 
   async deleteCategory(ownerId: string, categoryId: string) {
-    const shop = await this.shopRepository.findByOwnerId(ownerId);
-
-    if (!shop) {
-      throw new NotFoundException('Shop not found');
-    }
+    const shop = await this.shopHelperService.getCurrentShop(ownerId);
 
     const category = await this.categoryRepository.findById(categoryId);
 
     if (!category || category.shopId !== shop.id) {
-      throw new NotFoundException('Category not found');
+      throw new NotFoundException(Messages.CATEGORY_NOT_FOUND);
     }
 
     await this.categoryRepository.delete(category.id);
 
-    return {
-      success: true,
-      message: 'Category deleted successfully',
-    };
+    return ApiResponse.success(Messages.CATEGORY_DELETED);
   }
 }

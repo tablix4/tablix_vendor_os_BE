@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { Prisma, Order } from '@prisma/client';
+import { Prisma, Order, OrderStatus } from '@prisma/client';
 
 @Injectable()
 export class OrderRepository {
@@ -61,5 +61,83 @@ export class OrderRepository {
         status,
       },
     });
+  }
+
+  async findAllByShopWithPagination(
+    shopId: string,
+    query: {
+      skip: number;
+      take: number;
+      search?: string;
+      customerPhone?: string;
+      status?: OrderStatus;
+      fromDate?: Date;
+      toDate?: Date;
+      sortBy: string;
+      sortOrder: 'asc' | 'desc';
+    },
+  ) {
+    const where: Prisma.OrderWhereInput = {
+      shopId,
+
+      ...(query.status && {
+        status: query.status,
+      }),
+
+      ...(query.customerPhone && {
+        customerPhone: {
+          contains: query.customerPhone,
+          mode: Prisma.QueryMode.insensitive,
+        },
+      }),
+
+      ...(query.search && {
+        customerName: {
+          contains: query.search,
+          mode: Prisma.QueryMode.insensitive,
+        },
+      }),
+
+      ...((query.fromDate || query.toDate) && {
+        createdAt: {
+          ...(query.fromDate && {
+            gte: query.fromDate,
+          }),
+          ...(query.toDate && {
+            lte: query.toDate,
+          }),
+        },
+      }),
+    };
+
+    const orderBy: Prisma.OrderOrderByWithRelationInput = {
+      [query.sortBy]: query.sortOrder,
+    };
+
+    const [items, total] = await this.prisma.$transaction([
+      this.prisma.order.findMany({
+        where,
+        skip: query.skip,
+        take: query.take,
+        orderBy,
+
+        include: {
+          items: {
+            include: {
+              menuItem: true,
+            },
+          },
+        },
+      }),
+
+      this.prisma.order.count({
+        where,
+      }),
+    ]);
+
+    return {
+      items,
+      total,
+    };
   }
 }

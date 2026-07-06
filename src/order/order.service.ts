@@ -6,35 +6,33 @@ import {
 
 import { Prisma } from '@prisma/client';
 
-import { ShopRepository } from '../shop/repositories/shop.repository';
 import { MenuRepository } from '../menu/repositories/menu.repository';
 import { OrderRepository } from './repositories/order.repository';
 
-import { CreateOrderDto, UpdateOrderStatusDto } from './dto';
+import { CreateOrderDto, GetOrdersDto, UpdateOrderStatusDto } from './dto';
+
+import { ShopHelperService } from '../common/services/shop-helper.service';
+import { ApiResponse } from '../common/utils/api-response';
+import { Messages } from '../common/constants/messages';
+import { PaginationUtil } from 'src/common/pagination/pagination.util';
 
 @Injectable()
 export class OrderService {
   constructor(
-    private readonly shopRepository: ShopRepository,
+    private readonly shopHelperService: ShopHelperService,
     private readonly menuRepository: MenuRepository,
     private readonly orderRepository: OrderRepository,
   ) {}
 
   async createOrder(ownerId: string, dto: CreateOrderDto) {
-    const shop = await this.shopRepository.findByOwnerId(ownerId);
-
-    if (!shop) {
-      throw new NotFoundException('Shop not found');
-    }
+    const shop = await this.shopHelperService.getCurrentShop(ownerId);
 
     const menuIds = dto.items.map((item) => item.menuItemId);
 
     const menuItems = await this.menuRepository.findManyByIds(shop.id, menuIds);
 
     if (menuItems.length !== dto.items.length) {
-      throw new BadRequestException(
-        'One or more menu items are invalid or unavailable.',
-      );
+      throw new BadRequestException(Messages.INVALID_MENU_ITEMS);
     }
 
     let total = 0;
@@ -43,7 +41,7 @@ export class OrderService {
       const menu = menuItems.find((m) => m.id === item.menuItemId);
 
       if (!menu) {
-        throw new BadRequestException('Invalid menu item.');
+        throw new BadRequestException(Messages.INVALID_MENU_ITEM);
       }
 
       total += Number(menu.price) * item.quantity;
@@ -51,6 +49,7 @@ export class OrderService {
       return {
         quantity: item.quantity,
         price: menu.price,
+
         menuItem: {
           connect: {
             id: menu.id,
@@ -61,7 +60,9 @@ export class OrderService {
 
     const order = await this.orderRepository.create({
       customerName: dto.customerName,
+
       customerPhone: dto.customerPhone,
+
       total: new Prisma.Decimal(total),
 
       shop: {
@@ -75,45 +76,48 @@ export class OrderService {
       },
     });
 
-    return {
-      success: true,
-      message: 'Order created successfully',
-      data: order,
-    };
+    return ApiResponse.success(Messages.ORDER_CREATED, order);
   }
 
-  async getOrders(ownerId: string) {
-    const shop = await this.shopRepository.findByOwnerId(ownerId);
+  async getOrders(ownerId: string, query: GetOrdersDto) {
+    const shop = await this.shopHelperService.getCurrentShop(ownerId);
 
-    if (!shop) {
-      throw new NotFoundException('Shop not found');
-    }
+    const result = await this.orderRepository.findAllByShopWithPagination(
+      shop.id,
+      {
+        skip: PaginationUtil.getSkip(query.page, query.limit),
+        take: query.limit,
+        search: query.customerName,
+        customerPhone: query.customerPhone,
+        status: query.status,
+        fromDate: query.fromDate ? new Date(query.fromDate) : undefined,
+        toDate: query.toDate ? new Date(query.toDate) : undefined,
+        sortBy: query.sortBy,
+        sortOrder: query.sortOrder,
+      },
+    );
 
-    const orders = await this.orderRepository.findAllByShop(shop.id);
-
-    return {
-      success: true,
-      data: orders,
-    };
+    return ApiResponse.success(
+      Messages.ORDER_FETCH_SUCCESS,
+      PaginationUtil.createResponse(
+        result.items,
+        result.total,
+        query.page,
+        query.limit,
+      ),
+    );
   }
 
   async getOrderById(ownerId: string, orderId: string) {
-    const shop = await this.shopRepository.findByOwnerId(ownerId);
-
-    if (!shop) {
-      throw new NotFoundException('Shop not found');
-    }
+    const shop = await this.shopHelperService.getCurrentShop(ownerId);
 
     const order = await this.orderRepository.findById(orderId);
 
     if (!order || order.shopId !== shop.id) {
-      throw new NotFoundException('Order not found');
+      throw new NotFoundException(Messages.ORDER_NOT_FOUND);
     }
 
-    return {
-      success: true,
-      data: order,
-    };
+    return ApiResponse.success(Messages.ORDER_DETAILS, order);
   }
 
   async updateOrderStatus(
@@ -121,16 +125,12 @@ export class OrderService {
     orderId: string,
     dto: UpdateOrderStatusDto,
   ) {
-    const shop = await this.shopRepository.findByOwnerId(ownerId);
-
-    if (!shop) {
-      throw new NotFoundException('Shop not found');
-    }
+    const shop = await this.shopHelperService.getCurrentShop(ownerId);
 
     const order = await this.orderRepository.findById(orderId);
 
     if (!order || order.shopId !== shop.id) {
-      throw new NotFoundException('Order not found');
+      throw new NotFoundException(Messages.ORDER_NOT_FOUND);
     }
 
     const updated = await this.orderRepository.updateStatus(
@@ -138,10 +138,6 @@ export class OrderService {
       dto.status,
     );
 
-    return {
-      success: true,
-      message: 'Order status updated successfully',
-      data: updated,
-    };
+    return ApiResponse.success(Messages.ORDER_UPDATED, updated);
   }
 }

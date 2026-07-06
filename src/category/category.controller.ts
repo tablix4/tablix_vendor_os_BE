@@ -54,6 +54,7 @@ export class CategoryController {
     description: 'Category list',
   })
   async findAll(@Request() req: { user: { id: string } }) {
+    console.log(req.user.id, 'req.user.id');
     return this.categoryService.getCategories(req.user.id);
   }
 

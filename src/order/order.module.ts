@@ -6,9 +6,10 @@ import { OrderRepository } from './repositories/order.repository';
 
 import { ShopModule } from '../shop/shop.module';
 import { MenuModule } from '../menu/menu.module';
+import { CommonModule } from 'src/common/common.module';
 
 @Module({
-  imports: [ShopModule, MenuModule],
+  imports: [ShopModule, MenuModule, CommonModule],
   controllers: [OrderController],
   providers: [OrderService, OrderRepository],
 })

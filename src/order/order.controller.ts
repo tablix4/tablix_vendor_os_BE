@@ -5,6 +5,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Request,
   UseGuards,
 } from '@nestjs/common';
@@ -20,7 +21,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 import { OrderService } from './order.service';
 
-import { CreateOrderDto, UpdateOrderStatusDto } from './dto';
+import { CreateOrderDto, GetOrdersDto, UpdateOrderStatusDto } from './dto';
 
 @ApiTags('Orders')
 @ApiBearerAuth()
@@ -48,8 +49,12 @@ export class OrderController {
   @ApiOperation({
     summary: 'Get Orders',
   })
-  async findAll(@Request() req: { user: { id: string } }) {
-    return this.orderService.getOrders(req.user.id);
+  async findAll(
+    @Request() req: { user: { id: string } },
+    @Query() query: GetOrdersDto,
+  ) {
+    const order = await this.orderService.getOrders(req.user.id, query);
+    return order;
   }
 
   @Get(':id')

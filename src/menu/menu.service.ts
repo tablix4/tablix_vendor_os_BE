@@ -6,26 +6,26 @@ import {
 
 import { Prisma } from '@prisma/client';
 
-import { ShopRepository } from '../shop/repositories/shop.repository';
 import { CategoryRepository } from '../category/repositories/category.repository';
 import { MenuRepository } from './repositories/menu.repository';
 
-import { CreateMenuItemDto, UpdateMenuItemDto } from './dto';
+import { CreateMenuItemDto, GetMenuItemsDto, UpdateMenuItemDto } from './dto';
+
+import { ShopHelperService } from '../common/services/shop-helper.service';
+import { ApiResponse } from '../common/utils/api-response';
+import { Messages } from '../common/constants/messages';
+import { PaginationUtil } from 'src/common/pagination/pagination.util';
 
 @Injectable()
 export class MenuService {
   constructor(
-    private readonly shopRepository: ShopRepository,
+    private readonly shopHelperService: ShopHelperService,
     private readonly categoryRepository: CategoryRepository,
     private readonly menuRepository: MenuRepository,
   ) {}
 
   async createMenuItem(ownerId: string, dto: CreateMenuItemDto) {
-    const shop = await this.shopRepository.findByOwnerId(ownerId);
-
-    if (!shop) {
-      throw new NotFoundException('Shop not found');
-    }
+    const shop = await this.shopHelperService.getCurrentShop(ownerId);
 
     const category = await this.categoryRepository.findByIdAndShop(
       dto.categoryId,
@@ -33,7 +33,7 @@ export class MenuService {
     );
 
     if (!category) {
-      throw new BadRequestException('Invalid category');
+      throw new BadRequestException(Messages.INVALID_CATEGORY);
     }
 
     const menuItem = await this.menuRepository.create({
@@ -56,34 +56,38 @@ export class MenuService {
       },
     });
 
-    return {
-      success: true,
-      message: 'Menu item created successfully',
-      data: menuItem,
-    };
+    return ApiResponse.success(Messages.MENU_ITEM_CREATED, menuItem);
   }
 
-  async getMenuItems(ownerId: string) {
-    const shop = await this.shopRepository.findByOwnerId(ownerId);
+  async getMenuItems(ownerId: string, query: GetMenuItemsDto) {
+    const shop = await this.shopHelperService.getCurrentShop(ownerId);
 
-    if (!shop) {
-      throw new NotFoundException('Shop not found');
-    }
+    const result = await this.menuRepository.findAllByShopWithPagination(
+      shop.id,
+      {
+        skip: PaginationUtil.getSkip(query.page, query.limit),
+        take: query.limit,
+        search: query.search,
+        categoryId: query.categoryId,
+        isAvailable: query.isAvailable,
+        sortBy: query.sortBy,
+        sortOrder: query.sortOrder,
+      },
+    );
 
-    const menuItems = await this.menuRepository.findAllByShop(shop.id);
-
-    return {
-      success: true,
-      data: menuItems,
-    };
+    return ApiResponse.success(
+      Messages.MENU_FETCH_SUCCESS,
+      PaginationUtil.createResponse(
+        result.items,
+        result.total,
+        query.page,
+        query.limit,
+      ),
+    );
   }
 
   async getMenuItemById(ownerId: string, menuItemId: string) {
-    const shop = await this.shopRepository.findByOwnerId(ownerId);
-
-    if (!shop) {
-      throw new NotFoundException('Shop not found');
-    }
+    const shop = await this.shopHelperService.getCurrentShop(ownerId);
 
     const menuItem = await this.menuRepository.findByIdAndShop(
       menuItemId,
@@ -91,13 +95,10 @@ export class MenuService {
     );
 
     if (!menuItem) {
-      throw new NotFoundException('Menu item not found');
+      throw new NotFoundException(Messages.MENU_ITEM_NOT_FOUND);
     }
 
-    return {
-      success: true,
-      data: menuItem,
-    };
+    return ApiResponse.success(Messages.MENU_DETAILS, menuItem);
   }
 
   async updateMenuItem(
@@ -105,11 +106,7 @@ export class MenuService {
     menuItemId: string,
     dto: UpdateMenuItemDto,
   ) {
-    const shop = await this.shopRepository.findByOwnerId(ownerId);
-
-    if (!shop) {
-      throw new NotFoundException('Shop not found');
-    }
+    const shop = await this.shopHelperService.getCurrentShop(ownerId);
 
     const menuItem = await this.menuRepository.findByIdAndShop(
       menuItemId,
@@ -117,7 +114,7 @@ export class MenuService {
     );
 
     if (!menuItem) {
-      throw new NotFoundException('Menu item not found');
+      throw new NotFoundException(Messages.MENU_ITEM_NOT_FOUND);
     }
 
     const updateData: Prisma.MenuItemUpdateInput = {
@@ -138,7 +135,7 @@ export class MenuService {
       );
 
       if (!category) {
-        throw new BadRequestException('Invalid category');
+        throw new BadRequestException(Messages.INVALID_CATEGORY);
       }
 
       updateData.category = {
@@ -150,19 +147,11 @@ export class MenuService {
 
     const updated = await this.menuRepository.update(menuItem.id, updateData);
 
-    return {
-      success: true,
-      message: 'Menu item updated successfully',
-      data: updated,
-    };
+    return ApiResponse.success(Messages.MENU_UPDATED, updated);
   }
 
   async deleteMenuItem(ownerId: string, menuItemId: string) {
-    const shop = await this.shopRepository.findByOwnerId(ownerId);
-
-    if (!shop) {
-      throw new NotFoundException('Shop not found');
-    }
+    const shop = await this.shopHelperService.getCurrentShop(ownerId);
 
     const menuItem = await this.menuRepository.findByIdAndShop(
       menuItemId,
@@ -170,23 +159,24 @@ export class MenuService {
     );
 
     if (!menuItem) {
-      throw new NotFoundException('Menu item not found');
+      throw new NotFoundException(Messages.MENU_ITEM_NOT_FOUND);
+    }
+
+    const hasOrders = await this.menuRepository.hasOrders(menuItem.id);
+
+    if (hasOrders) {
+      throw new BadRequestException(
+        'This menu item has already been used in orders and cannot be deleted.',
+      );
     }
 
     await this.menuRepository.delete(menuItem.id);
 
-    return {
-      success: true,
-      message: 'Menu item deleted successfully',
-    };
+    return ApiResponse.success(Messages.MENU_DELETED);
   }
 
   async toggleAvailability(ownerId: string, menuItemId: string) {
-    const shop = await this.shopRepository.findByOwnerId(ownerId);
-
-    if (!shop) {
-      throw new NotFoundException('Shop not found');
-    }
+    const shop = await this.shopHelperService.getCurrentShop(ownerId);
 
     const menuItem = await this.menuRepository.findByIdAndShop(
       menuItemId,
@@ -194,17 +184,13 @@ export class MenuService {
     );
 
     if (!menuItem) {
-      throw new NotFoundException('Menu item not found');
+      throw new NotFoundException(Messages.MENU_ITEM_NOT_FOUND);
     }
 
     const updated = await this.menuRepository.update(menuItem.id, {
       isAvailable: !menuItem.isAvailable,
     });
 
-    return {
-      success: true,
-      message: 'Availability updated',
-      data: updated,
-    };
+    return ApiResponse.success(Messages.MENU_AVAILABILITY_UPDATED, updated);
   }
 }

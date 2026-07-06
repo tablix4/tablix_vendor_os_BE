@@ -13,6 +13,7 @@ export class OtpRepository {
   }
 
   async deletePrevious(email: string, purpose: OtpPurpose): Promise<void> {
+    console.log('deletePrevious');
     await this.prisma.otp.deleteMany({
       where: {
         email,

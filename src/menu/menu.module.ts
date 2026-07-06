@@ -6,9 +6,10 @@ import { MenuRepository } from './repositories/menu.repository';
 
 import { ShopModule } from '../shop/shop.module';
 import { CategoryModule } from '../category/category.module';
+import { CommonModule } from 'src/common/common.module';
 
 @Module({
-  imports: [ShopModule, CategoryModule],
+  imports: [ShopModule, CategoryModule, CommonModule],
   controllers: [MenuController],
   providers: [MenuService, MenuRepository],
   exports: [MenuRepository],

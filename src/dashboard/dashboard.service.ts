@@ -1,22 +1,21 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { OrderStatus } from '@prisma/client';
 
-import { ShopRepository } from '../shop/repositories/shop.repository';
 import { DashboardRepository } from './repositories/dashboard.repository';
+
+import { ShopHelperService } from '../common/services/shop-helper.service';
+import { ApiResponse } from '../common/utils/api-response';
+import { Messages } from '../common/constants/messages';
 
 @Injectable()
 export class DashboardService {
   constructor(
-    private readonly shopRepository: ShopRepository,
+    private readonly shopHelperService: ShopHelperService,
     private readonly dashboardRepository: DashboardRepository,
   ) {}
 
   async getDashboard(ownerId: string) {
-    const shop = await this.shopRepository.findByOwnerId(ownerId);
-
-    if (!shop) {
-      throw new NotFoundException('Shop not found');
-    }
+    const shop = await this.shopHelperService.getCurrentShop(ownerId);
 
     const [
       totalMenuItems,
@@ -30,7 +29,9 @@ export class DashboardService {
       recentOrders,
     ] = await Promise.all([
       this.dashboardRepository.totalMenuItems(shop.id),
+
       this.dashboardRepository.totalCategories(shop.id),
+
       this.dashboardRepository.totalOrders(shop.id),
 
       this.dashboardRepository.statusCount(shop.id, OrderStatus.PENDING),
@@ -46,19 +47,16 @@ export class DashboardService {
       this.dashboardRepository.recentOrders(shop.id),
     ]);
 
-    return {
-      success: true,
-      data: {
-        totalSales,
-        totalOrders,
-        pendingOrders,
-        preparingOrders,
-        readyOrders,
-        completedOrders,
-        totalMenuItems,
-        totalCategories,
-        recentOrders,
-      },
-    };
+    return ApiResponse.success(Messages.DASHBOARD_FETCH_SUCCESS, {
+      totalSales,
+      totalOrders,
+      pendingOrders,
+      preparingOrders,
+      readyOrders,
+      completedOrders,
+      totalMenuItems,
+      totalCategories,
+      recentOrders,
+    });
   }
 }
