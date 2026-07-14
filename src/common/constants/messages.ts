@@ -60,4 +60,10 @@ export const Messages = {
   // DASHBOARD
   // =========================
   DASHBOARD_FETCH_SUCCESS: 'Dashboard fetched successfully',
+
+  // =========================
+  // USER
+  // =========================
+  PROFILE_FETCH_SUCCESS: 'Profile fetched successfully',
+  USER_NOT_FOUND: 'User not found',
 } as const;

@@ -86,4 +86,16 @@ export class UserRepository {
       },
     });
   }
+
+  async findProfile(id: string) {
+    return this.prisma.user.findUnique({
+      where: {
+        id,
+      },
+
+      include: {
+        shop: true,
+      },
+    });
+  }
 }
