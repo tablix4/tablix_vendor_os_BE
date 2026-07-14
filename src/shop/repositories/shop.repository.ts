@@ -22,4 +22,14 @@ export class ShopRepository {
       data,
     });
   }
+  async updateName(shopId: string, name: string) {
+    return this.prisma.shop.update({
+      where: {
+        id: shopId,
+      },
+      data: {
+        name,
+      },
+    });
+  }
 }

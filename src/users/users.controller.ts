@@ -1,4 +1,11 @@
-import { Controller, Get, Request, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Patch,
+  Request,
+  UseGuards,
+} from '@nestjs/common';
 
 import {
   ApiBearerAuth,
@@ -10,6 +17,7 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 import { UsersService } from './users.service';
+import { UpdateProfileDto } from 'src/user/dto/update-profile.dto';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -28,5 +36,20 @@ export class UsersController {
   })
   async getProfile(@Request() req: { user: { id: string } }) {
     return this.userService.getProfile(req.user.id);
+  }
+
+  @Patch('profile')
+  @ApiOperation({
+    summary: 'Update Profile',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Profile updated successfully',
+  })
+  async updateProfile(
+    @Request() req: { user: { id: string } },
+    @Body() dto: UpdateProfileDto,
+  ) {
+    return this.userService.updateProfile(req.user.id, dto);
   }
 }

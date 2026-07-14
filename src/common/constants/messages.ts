@@ -66,4 +66,5 @@ export const Messages = {
   // =========================
   PROFILE_FETCH_SUCCESS: 'Profile fetched successfully',
   USER_NOT_FOUND: 'User not found',
+  PROFILE_UPDATED: 'Profile updated successfully',
 } as const;
