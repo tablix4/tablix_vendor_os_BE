@@ -1,4 +1,4 @@
-import { Controller, Get, Request, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, Request, UseGuards } from '@nestjs/common';
 
 import {
   ApiBearerAuth,
@@ -10,6 +10,7 @@ import {
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 import { DashboardService } from './dashboard.service';
+import { DashboardQueryDto } from './dto/dashboard-query.dto';
 
 @ApiTags('Dashboard')
 @ApiBearerAuth()
@@ -26,7 +27,14 @@ export class DashboardController {
     status: 200,
     description: 'Dashboard data',
   })
-  async dashboard(@Request() req: { user: { id: string } }) {
-    return this.dashboardService.getDashboard(req.user.id);
+  async dashboard(
+    @Request() req: { user: { id: string } },
+    @Query() query: DashboardQueryDto,
+  ) {
+    return this.dashboardService.getDashboard(
+      req.user.id,
+      query.startDate,
+      query.endDate,
+    );
   }
 }

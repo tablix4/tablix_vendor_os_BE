@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
 import { OrderStatus } from '@prisma/client';
+
+import { PrismaService } from '../../prisma/prisma.service';
+
+import { DashboardDateRange } from '../types/dashboard-date-range.type';
 
 @Injectable()
 export class DashboardRepository {
@@ -22,29 +25,55 @@ export class DashboardRepository {
     });
   }
 
-  async totalOrders(shopId: string) {
+  async totalOrders(shopId: string, dateRange?: DashboardDateRange) {
     return this.prisma.order.count({
       where: {
         shopId,
+
+        ...(dateRange && {
+          createdAt: {
+            gte: dateRange.startDate,
+            lt: dateRange.endDate,
+          },
+        }),
       },
     });
   }
 
-  async statusCount(shopId: string, status: OrderStatus) {
+  async statusCount(
+    shopId: string,
+    status: OrderStatus,
+    dateRange?: DashboardDateRange,
+  ) {
     return this.prisma.order.count({
       where: {
         shopId,
         status,
+
+        ...(dateRange && {
+          createdAt: {
+            gte: dateRange.startDate,
+            lt: dateRange.endDate,
+          },
+        }),
       },
     });
   }
 
-  async totalSales(shopId: string) {
+  async totalSales(shopId: string, dateRange?: DashboardDateRange) {
     const result = await this.prisma.order.aggregate({
       where: {
         shopId,
         status: OrderStatus.COMPLETED,
+
+        ...(dateRange && {
+          createdAt: {
+            gte: dateRange.startDate,
+            lt: dateRange.endDate,
+          },
+        }),
       },
+
       _sum: {
         total: true,
       },
@@ -53,11 +82,19 @@ export class DashboardRepository {
     return Number(result._sum.total ?? 0);
   }
 
-  async recentOrders(shopId: string) {
+  async recentOrders(shopId: string, dateRange?: DashboardDateRange) {
     return this.prisma.order.findMany({
       where: {
         shopId,
+
+        ...(dateRange && {
+          createdAt: {
+            gte: dateRange.startDate,
+            lt: dateRange.endDate,
+          },
+        }),
       },
+
       include: {
         items: {
           include: {
@@ -65,9 +102,11 @@ export class DashboardRepository {
           },
         },
       },
+
       orderBy: {
         createdAt: 'desc',
       },
+
       take: 10,
     });
   }
