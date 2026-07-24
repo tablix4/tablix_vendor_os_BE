@@ -2,6 +2,8 @@ import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
 
+import { getOtpEmailTemplate } from './templates/otp-email.template';
+
 @Injectable()
 export class MailService {
   private transporter: nodemailer.Transporter;
@@ -21,42 +23,15 @@ export class MailService {
   async sendOtp(email: string, otp: string): Promise<void> {
     try {
       await this.transporter.sendMail({
-        from: `"Vendor OS" <${this.configService.get('SMTP_USER')}>`,
+        from: `"Vendor OS" <${this.configService.get<string>('SMTP_USER')}>`,
         to: email,
-        subject: 'Your Login OTP',
-        html: this.getOtpTemplate(otp),
+        subject: `${otp} is your Vendor OS verification code`,
+        html: getOtpEmailTemplate(otp),
       });
     } catch (error) {
-      console.error(error);
+      console.error('Failed to send Vendor OS OTP email:', error);
+
       throw new InternalServerErrorException('Failed to send email');
     }
-  }
-
-  private getOtpTemplate(otp: string): string {
-    return `
-      <div style="font-family:Arial;padding:30px">
-        <h2>Vendor OS Login</h2>
-
-        <p>Your OTP is</p>
-
-        <h1
-          style="
-            letter-spacing:8px;
-            color:#2563eb;
-          "
-        >
-          ${otp}
-        </h1>
-
-        <p>This OTP is valid for 5 minutes.</p>
-
-        <br>
-
-        <small>
-          If you didn't request this OTP,
-          please ignore this email.
-        </small>
-      </div>
-    `;
   }
 }

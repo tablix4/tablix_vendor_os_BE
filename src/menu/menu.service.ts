@@ -162,14 +162,7 @@ export class MenuService {
       throw new NotFoundException(Messages.MENU_ITEM_NOT_FOUND);
     }
 
-    const hasOrders = await this.menuRepository.hasOrders(menuItem.id);
-
-    if (hasOrders) {
-      throw new BadRequestException(
-        'This menu item has already been used in orders and cannot be deleted.',
-      );
-    }
-
+    console.log(menuItem);
     await this.menuRepository.delete(menuItem.id);
 
     return ApiResponse.success(Messages.MENU_DELETED);

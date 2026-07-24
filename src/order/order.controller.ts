@@ -77,6 +77,11 @@ export class OrderController {
     @Param('id') id: string,
     @Body() dto: UpdateOrderStatusDto,
   ) {
+    console.log('Received request to update order status:', {
+      ownerId: req.user.id,
+      orderId: id,
+      dto,
+    });
     return this.orderService.updateOrderStatus(req.user.id, id, dto);
   }
 }

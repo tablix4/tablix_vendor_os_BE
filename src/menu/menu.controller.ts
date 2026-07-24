@@ -71,6 +71,7 @@ export class MenuController {
     @Request() req: { user: { id: string } },
     @Param('id') id: string,
   ) {
+    console.log('MENU CONTROLLER HIT');
     return this.menuService.getMenuItemById(req.user.id, id);
   }
 

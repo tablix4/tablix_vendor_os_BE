@@ -125,6 +125,7 @@ export class OrderService {
     orderId: string,
     dto: UpdateOrderStatusDto,
   ) {
+    console.log('Updating order status:', { ownerId, orderId, dto });
     const shop = await this.shopHelperService.getCurrentShop(ownerId);
 
     const order = await this.orderRepository.findById(orderId);
@@ -135,7 +136,7 @@ export class OrderService {
 
     const updated = await this.orderRepository.updateStatus(
       order.id,
-      dto.status,
+      dto.status as any, // Type assertion to Prisma.OrderStatus
     );
 
     return ApiResponse.success(Messages.ORDER_UPDATED, updated);

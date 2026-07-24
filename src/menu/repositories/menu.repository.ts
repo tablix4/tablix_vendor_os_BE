@@ -16,6 +16,7 @@ export class MenuRepository {
     return this.prisma.menuItem.findMany({
       where: {
         shopId,
+        isDeleted: false,
       },
       include: {
         category: true,
@@ -50,9 +51,14 @@ export class MenuRepository {
   }
 
   async delete(id: string): Promise<MenuItem> {
-    return this.prisma.menuItem.delete({
+    return this.prisma.menuItem.update({
       where: {
         id,
+      },
+      data: {
+        isDeleted: true,
+        isAvailable: false,
+        deletedAt: new Date(),
       },
     });
   }
@@ -62,6 +68,7 @@ export class MenuRepository {
       where: {
         id,
         shopId,
+        isDeleted: false,
       },
       include: {
         category: true,
@@ -77,6 +84,7 @@ export class MenuRepository {
           in: ids,
         },
         isAvailable: true,
+        isDeleted: false,
       },
     });
   }
@@ -95,6 +103,7 @@ export class MenuRepository {
   ) {
     const where: Prisma.MenuItemWhereInput = {
       shopId,
+      isDeleted: false,
 
       ...(query.categoryId && {
         categoryId: query.categoryId,
