@@ -23,6 +23,12 @@ export class MailService {
   async sendOtp(email: string, otp: string): Promise<void> {
     try {
       console.log('Sending OTP email todddd:', email);
+      console.log({
+        host: this.configService.get('SMTP_HOST'),
+        port: this.configService.get('SMTP_PORT'),
+        user: this.configService.get('SMTP_USER'),
+        hasPassword: !!this.configService.get('SMTP_PASSWORD'),
+      });
       await this.transporter.sendMail({
         from: `"Vendor OS" <${this.configService.get<string>('SMTP_USER')}>`,
         to: email,
