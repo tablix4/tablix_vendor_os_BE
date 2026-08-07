@@ -49,12 +49,21 @@ export class AuthService {
     const expiresAt = this.otpService.getExpiryTime();
     console.log('expiresAt', expiresAt);
 
-    await this.otpRepository.create({
-      email: dto.email,
-      otp,
-      purpose: OtpPurpose.LOGIN,
-      expiresAt,
-    });
+    try {
+      await this.otpRepository.create({
+        email: dto.email,
+        otp,
+        purpose: OtpPurpose.LOGIN,
+        expiresAt,
+      });
+
+      console.log('create');
+    } catch (error) {
+      console.error('OTP CREATE ERROR');
+      console.error(error);
+
+      throw error;
+    }
     console.log('create');
     await this.mailService.sendOtp(dto.email, otp);
     console.log('sendOtp');
