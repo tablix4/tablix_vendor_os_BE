@@ -22,12 +22,14 @@ export class MailService {
 
   async sendOtp(email: string, otp: string): Promise<void> {
     try {
+      console.log('Sending OTP email todddd:', email);
       await this.transporter.sendMail({
         from: `"Vendor OS" <${this.configService.get<string>('SMTP_USER')}>`,
         to: email,
         subject: `${otp} is your Vendor OS verification code`,
         html: getOtpEmailTemplate(otp),
       });
+      console.log('OTP email sent successfully to:', email);
     } catch (error) {
       console.error('Failed to send Vendor OS OTP email:', error);
 
