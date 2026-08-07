@@ -1,57 +1,45 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as nodemailer from 'nodemailer';
+import axios from 'axios';
 
 import { getOtpEmailTemplate } from './templates/otp-email.template';
 
 @Injectable()
 export class MailService {
-  private transporter: nodemailer.Transporter;
-
-  constructor(private readonly configService: ConfigService) {
-    this.transporter = nodemailer.createTransport({
-      host: this.configService.get<string>('SMTP_HOST'),
-      port: Number(this.configService.get<string>('SMTP_PORT')),
-      secure: false,
-
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 10000,
-
-      auth: {
-        user: this.configService.get<string>('SMTP_USER'),
-        pass: this.configService.get<string>('SMTP_PASSWORD'),
-      },
-    });
-
-    this.transporter.verify((error, success) => {
-      if (error) {
-        console.error('SMTP VERIFY ERROR');
-        console.error(error);
-      } else {
-        console.log('SMTP SERVER READY');
-      }
-    });
-  }
+  constructor(private readonly configService: ConfigService) {}
 
   async sendOtp(email: string, otp: string): Promise<void> {
     try {
-      console.log('Sending OTP email todddd:', email);
-      console.log({
-        host: this.configService.get('SMTP_HOST'),
-        port: this.configService.get('SMTP_PORT'),
-        user: this.configService.get('SMTP_USER'),
-        hasPassword: !!this.configService.get('SMTP_PASSWORD'),
-      });
-      await this.transporter.sendMail({
-        from: `"Vendor OS" <${this.configService.get<string>('SMTP_USER')}>`,
-        to: email,
-        subject: `${otp} is your Vendor OS verification code`,
-        html: getOtpEmailTemplate(otp),
-      });
-      console.log('OTP email sent successfully to:', email);
-    } catch (error) {
-      console.error('Failed to send Vendor OS OTP email:', error);
+      console.log('Sending OTP via Brevo API:', email);
+
+      const response = await axios.post(
+        'https://api.brevo.com/v3/smtp/email',
+        {
+          sender: {
+            name: this.configService.get<string>('MAIL_FROM_NAME'),
+            email: this.configService.get<string>('MAIL_FROM'),
+          },
+          to: [
+            {
+              email,
+            },
+          ],
+          subject: `${otp} is your Vendor OS verification code`,
+          htmlContent: getOtpEmailTemplate(otp),
+        },
+        {
+          headers: {
+            accept: 'application/json',
+            'content-type': 'application/json',
+            'api-key': this.configService.get<string>('BREVO_API_KEY'),
+          },
+        },
+      );
+
+      console.log('Brevo Response:', response.data);
+      console.log('OTP email sent successfully');
+    } catch (error: any) {
+      console.error('Brevo API Error:', error.response?.data || error.message);
 
       throw new InternalServerErrorException('Failed to send email');
     }
