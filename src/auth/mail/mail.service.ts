@@ -13,10 +13,24 @@ export class MailService {
       host: this.configService.get<string>('SMTP_HOST'),
       port: Number(this.configService.get<string>('SMTP_PORT')),
       secure: false,
+
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 10000,
+
       auth: {
         user: this.configService.get<string>('SMTP_USER'),
         pass: this.configService.get<string>('SMTP_PASSWORD'),
       },
+    });
+
+    this.transporter.verify((error, success) => {
+      if (error) {
+        console.error('SMTP VERIFY ERROR');
+        console.error(error);
+      } else {
+        console.log('SMTP SERVER READY');
+      }
     });
   }
 
