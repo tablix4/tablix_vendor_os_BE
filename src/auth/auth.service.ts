@@ -65,7 +65,16 @@ export class AuthService {
       throw error;
     }
     console.log('create');
-    await this.mailService.sendOtp(dto.email, otp);
+    console.log('create');
+
+    try {
+      await this.mailService.sendOtp(dto.email, otp);
+      console.log('sendOtp');
+    } catch (e) {
+      console.error('MAIL ERROR');
+      console.error(e);
+      throw e;
+    }
     console.log('sendOtp');
     return ApiResponse.success(Messages.OTP_SENT);
   }
