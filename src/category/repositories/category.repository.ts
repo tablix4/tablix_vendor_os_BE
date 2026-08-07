@@ -69,4 +69,15 @@ export class CategoryRepository {
       },
     });
   }
+
+  // ----------------------------------------------------------
+  // Check whether category contains menu items
+  // ----------------------------------------------------------
+  async countMenuItems(categoryId: string): Promise<number> {
+    return this.prisma.menuItem.count({
+      where: {
+        categoryId,
+      },
+    });
+  }
 }

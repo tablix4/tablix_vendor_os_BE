@@ -40,8 +40,8 @@ export class AuthService {
 
   async sendOtp(dto: SendOtpDto) {
     console.log('???????????????', dto.email);
-    await this.otpRepository.deletePrevious(dto.email, OtpPurpose.LOGIN);
-    console.log('deletePrevious');
+    // await this.otpRepository.deletePrevious(dto.email, OtpPurpose.LOGIN);
+    // console.log('deletePrevious');
 
     const otp = this.otpService.generateOtp();
     console.log('otp', otp);

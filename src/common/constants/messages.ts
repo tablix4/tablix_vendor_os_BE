@@ -32,6 +32,8 @@ export const Messages = {
   CATEGORY_UPDATED: 'Category updated successfully',
   CATEGORY_DELETED: 'Category deleted successfully',
   CATEGORY_NOT_FOUND: 'Category not found',
+  CATEGORY_HAS_MENU_ITEMS:
+    'Category cannot be deleted because it contains menu items.',
 
   // =========================
   // MENU

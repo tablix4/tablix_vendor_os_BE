@@ -86,10 +86,21 @@ export class CategoryService {
   async deleteCategory(ownerId: string, categoryId: string) {
     const shop = await this.shopHelperService.getCurrentShop(ownerId);
 
-    const category = await this.categoryRepository.findById(categoryId);
+    const category = await this.categoryRepository.findByIdAndShop(
+      categoryId,
+      shop.id,
+    );
 
-    if (!category || category.shopId !== shop.id) {
+    if (!category) {
       throw new NotFoundException(Messages.CATEGORY_NOT_FOUND);
+    }
+
+    const menuItemCount = await this.categoryRepository.countMenuItems(
+      category.id,
+    );
+
+    if (menuItemCount > 0) {
+      throw new ConflictException(Messages.CATEGORY_HAS_MENU_ITEMS);
     }
 
     await this.categoryRepository.delete(category.id);
